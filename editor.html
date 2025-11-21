@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Editor · ZaidCapes</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    /* Editor specific */
+    .editor-wrap{max-width:1100px;margin:28px auto;padding:18px;background:transparent}
+    .editor-grid{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;justify-content:center}
+    .controls{min-width:260px;background:var(--card);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    .controls h3{margin:0 0 8px;font-size:16px}
+    .palette{display:flex;flex-wrap:wrap;gap:6px}
+    .swatch{width:34px;height:34px;border-radius:6px;cursor:pointer;border:1px solid rgba(255,255,255,0.04)}
+    .tool{display:flex;gap:8px;margin-top:8px}
+    .canvas-wrap{background:linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.25));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    canvas{background:white;display:block;border-radius:6px;touch-action:none}
+    .meta{margin-top:12px;color:var(--muted);font-size:13px}
+    .btn-row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">ZaidCapes</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="editor.html" class="active">Editor</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="support.html">Support</a>
+    </nav>
+  </header>
+
+  <main class="editor-wrap">
+    <div style="text-align:center;margin-bottom:12px">
+      <h2 style="margin:0">Pixel Editor</h2>
+      <p class="meta">Small pixel grid, touch optimized. Export PNG when finished.</p>
+    </div>
+
+    <div class="editor-grid">
+      <div class="canvas-wrap">
+        <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:10px">
+          <label>Grid size:
+            <select id="gridSize">
+              <option value="16">16 × 16</option>
+              <option value="32" selected>32 × 32</option>
+              <option value="64">64 × 64</option>
+            </select>
+          </label>
+          <label>Pixel scale:
+            <select id="pixelScale">
+              <option value="8">8x</option>
+              <option value="10">10x</option>
+              <option value="12" selected>12x</option>
+              <option value="16">16x</option>
+            </select>
+          </label>
+        </div>
+
+        <canvas id="pixelCanvas" width="384" height="384" style="width:100%;max-width:520px"></canvas>
+
+        <div class="meta">Draw with touch or mouse. Use export to save PNG.</div>
+      </div>
+
+      <aside class="controls">
+        <h3>Tools</h3>
+        <div class="tool">
+          <button id="pencilBtn" class="btn">Pencil</button>
+          <button id="eraseBtn" class="btn">Erase</button>
+          <button id="fillBtn" class="btn">Fill</button>
+        </div>
+
+        <h3>Colors</h3>
+        <div class="palette" id="palette"></div>
+        <div style="margin-top:8px">
+          <input id="colorPicker" type="color" value="#ff47ff">
+        </div>
+
+        <h3>Actions</h3>
+        <div class="btn-row">
+          <button id="undoBtn" class="btn">Undo</button>
+          <button id="clearBtn" class="btn">Clear</button>
+          <button id="exportBtn" class="btn primary">Export PNG</button>
+        </div>
+
+        <div class="meta" style="margin-top:14px">Tip: long-press on canvas to drag (touch move) — painting is immediate.</div>
+      </aside>
+    </div>
+  </main>
+
+<script>
+/* Simple pixel editor */
+const canvas = document.getElementById('pixelCanvas');
+const ctx = canvas.getContext('2d',{alpha:true});
+let gridSize = parseInt(document.getElementById('gridSize').value);
+let scale = parseInt(document.getElementById('pixelScale').value);
+let currentTool = 'pencil';
+let currentColor = document.getElementById('colorPicker').value;
+let drawing=false;
+let pixelData = [];
+let undoStack = [];
+
+function initGrid(){
+  gridSize = parseInt(document.getElementById('gridSize').value);
+  scale = parseInt(document.getElementById('pixelScale').value);
+  canvas.width = gridSize;
+  canvas.height = gridSize;
+  // style scale for display
+  canvas.style.width = (gridSize * scale) + 'px';
+  canvas.style.height = (gridSize * scale) + 'px';
+  ctx.imageSmoothingEnabled = false;
+  // initialize pixel data to transparent
+  pixelData = new Array(gridSize*gridSize).fill(null);
+  render();
+  undoStack = [];
+}
+
+function render(){
+  // clear
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<gridSize;y++){
+    for(let x=0;x<gridSize;x++){
+      const col = pixelData[y*gridSize + x];
+      if(col){
+        ctx.fillStyle = col;
+        ctx.fillRect(x,y,1,1);
+      }
+    }
+  }
+}
+
+function pushUndo(){
+  undoStack.push(pixelData.slice());
+  if(undoStack.length>30) undoStack.shift();
+}
+
+function setPixel(x,y,color){
+  if(x<0||y<0||x>=gridSize||y>=gridSize) return;
+  pixelData[y*gridSize + x] = color;
+}
+
+function getMousePos(e){
+  const rect = canvas.getBoundingClientRect();
+  const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+  const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
+  const sx = (clientX - rect.left) * (canvas.width / rect.width);
+  const sy = (clientY - rect.top) * (canvas.height / rect.height);
+  return {x: Math.floor(sx), y: Math.floor(sy)};
+}
+
+canvas.addEventListener('pointerdown', (e)=>{
+  drawing = true;
+  canvas.setPointerCapture(e.pointerId);
+  pushUndo();
+  handleDraw(e);
+});
+canvas.addEventListener('pointermove', (e)=>{
+  if(drawing) handleDraw(e);
+});
+canvas.addEventListener('pointerup', (e)=>{
+  drawing=false;
+  canvas.releasePointerCapture(e.pointerId);
+});
+
+function handleDraw(e){
+  const p = getMousePos(e);
+  if(currentTool==='pencil'){
+    setPixel(p.x,p.y,currentColor);
+  }else if(currentTool==='erase'){
+    setPixel(p.x,p.y,null);
+  }else if(currentTool==='fill'){
+    floodFill(p.x,p.y,currentColor);
+  }
+  render();
+}
+
+/* flood fill */
+function floodFill(sx,sy,color){
+  const target = pixelData[sy*gridSize + sx];
+  if(target === color) return;
+  const stack = [[sx,sy]];
+  while(stack.length){
+    const [x,y] = stack.pop();
+    if(x<0||y<0||x>=gridSize||y>=gridSize) continue;
+    const idx = y*gridSize + x;
+    if(pixelData[idx] === target){
+      pixelData[idx] = color;
+      stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+    }
+  }
+}
+
+/* UI wiring */
+document.getElementById('pencilBtn').onclick = ()=> currentTool='pencil';
+document.getElementById('eraseBtn').onclick = ()=> currentTool='erase';
+document.getElementById('fillBtn').onclick = ()=> currentTool='fill';
+document.getElementById('colorPicker').oninput = (e)=> currentColor=e.target.value;
+document.getElementById('clearBtn').onclick = ()=> { pushUndo(); pixelData.fill(null); render(); }
+document.getElementById('undoBtn').onclick = ()=>{
+  if(undoStack.length){
+    pixelData = undoStack.pop();
+    render();
+  }
+}
+document.getElementById('gridSize').onchange = initGrid;
+document.getElementById('pixelScale').onchange = initGrid;
+
+/* palette */
+const paletteColors = ['#000000','#FFFFFF','#ff47ff','#8b5cf6','#00d2ff','#ff7a59','#ffd166','#7cfc00'];
+const pal = document.getElementById('palette');
+paletteColors.forEach(c=>{
+  const d = document.createElement('div');
+  d.className='swatch';
+  d.style.background = c;
+  d.onclick = ()=> { currentColor = c; document.getElementById('colorPicker').value = c; };
+  pal.appendChild(d);
+});
+
+/* export */
+document.getElementById('exportBtn').onclick = ()=>{
+  // create a temporary offscreen canvas at larger resolution to export crisp PNG
+  const outScale = 16; // export scale
+  const oc = document.createElement('canvas');
+  oc.width = gridSize * outScale;
+  oc.height = gridSize * outScale;
+  const ocx = oc.getContext('2d');
+  ocx.imageSmoothingEnabled = false;
+  // fill transparent background optional
+  ocx.clearRect(0,0,oc.width,oc.height);
+  for(let y=0;y<gridSize;y++){
+    for(let x=0;x<gridSize;x++){
+      const col = pixelData[y*gridSize + x];
+      if(col){
+        ocx.fillStyle = col;
+        ocx.fillRect(x*outScale, y*outScale, outScale, outScale);
+      }
+    }
+  }
+  // convert to data URL and trigger download
+  const data = oc.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = data;
+  a.download = 'zaidcape.png';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+initGrid();
+</script>
+</body>
+</html>
