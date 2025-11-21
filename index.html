@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ZaidCapes — Create Premium Capes</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">ZaidCapes</div>
+    <nav>
+      <a href="index.html" class="active">Home</a>
+      <a href="editor.html">Editor</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="support.html">Support</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <div class="hero-inner">
+      <img class="hero-logo" src="/mnt/data/7313031B-7801-4FFD-A2EC-169D3107A1A7.jpeg" alt="logo" />
+      <h1>Zaid's Capes Development Platform</h1>
+      <p class="subtitle">Your centralized platform for designing, managing, and delivering premium capes.</p>
+
+      <div class="cta">
+        <a class="btn primary" href="editor.html">Creation Dashboard</a>
+        <a class="btn ghost" href="support.html">Support</a>
+      </div>
+    </div>
+
+    <div class="neon-line"></div>
+  </main>
+
+  <section class="features">
+    <h2>Why Choose Zaid's Capes?</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Professional Tools</h3>
+        <p>Built for speed and precision — generate clean, high-quality cape designs.</p>
+      </div>
+      <div class="card">
+        <h3>Fast Exporting</h3>
+        <p>Preview, recolor, and export your cape in seconds with powerful tools.</p>
+      </div>
+      <div class="card">
+        <h3>Creator-Focused</h3>
+        <p>A clean UI designed to support cape designers with efficiency and clarity.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>© <strong>ZaidCapes</strong> — Built with ❤️ for creators.</p>
+  </footer>
+
+  <script>
+    // small script to toggle active nav on mobile if needed
+    document.querySelectorAll('nav a').forEach(a=>{
+      if(location.pathname.endsWith(a.getAttribute('href'))){
+        document.querySelectorAll('nav a').forEach(x=>x.classList.remove('active'));
+        a.classList.add('active');
+      }
+    });
+  </script>
+</body>
+</html>
